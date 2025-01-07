@@ -1,0 +1,46 @@
+#lang racket
+(define (load-histogram filename)
+  (call-with-input-file filename
+    (lambda (file)
+      (read file))))
+
+;; Fonction pour calculer la similarité entre deux histogrammes
+(define (sum-of-squares lst1 lst2 acc)
+  (if (null? lst1)
+      acc
+      (sum-of-squares (cdr lst1) (cdr lst2) (+ acc (* (- (car lst1) (car lst2)) (- (car lst1) (car lst2)))))))
+
+(define (calculate-similarity hist1 hist2)
+  (sqrt (sum-of-squares hist1 hist2 0)))
+
+
+;; Fonction pour charger les histogrammes du dataset
+(define (load-dataset-histograms image-dataset-directory)
+  (map (lambda (filename)
+         (cons filename (load-histogram filename)))
+       (list-text-files-in-directory image-dataset-directory)))
+
+;; Fonction principale pour rechercher les images similaires
+(define (similarity-search query-histogram-filename image-dataset-directory)
+  (define query-histogram (load-histogram query-histogram-filename))
+  (define dataset-histograms (load-dataset-histograms image-dataset-directory))
+  (define similarity-scores (map (lambda (hist)
+                                   (cons (calculate-similarity query-histogram (cdr hist)) (car hist)))
+                                 dataset-histograms))
+  (define sorted-scores (sort similarity-scores <))
+  (take (map cdr sorted-scores) 5))
+
+;; Fonction pour obtenir la liste de tous les fichiers texte dans un répertoire
+(define (list-text-files-in-directory directory-path)
+  (filter (lambda (file)
+            (string-suffix? file ".txt"))
+          (map path->string
+               (directory-list directory-path))))
+
+;; Fonction pour lire un fichier d'histogramme et retourner les valeurs dans une liste
+(define (read-hist-file filename) 
+  (call-with-input-file filename
+    (lambda (p)
+      (let f ((x (read p)))
+        (if (eof-object? x) '() (cons x (f (read p))))))))
+
